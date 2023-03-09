@@ -1,0 +1,62 @@
+//KC03CEA   JOB TIME=(,1)                                               
+//        EXEC IGYWCLG                                                  
+//COBOL.SYSIN DD *                                                      
+       IDENTIFICATION DIVISION.                                         
+       PROGRAM-ID. SAMPLE.                                              
+       ENVIRONMENT DIVISION.                                            
+       INPUT-OUTPUT SECTION.                                            
+       FILE-CONTROL.                                                    
+              SELECT EMPLOYEE-DATA ASSIGN INDD.                         
+              SELECT DATAOUT     ASSIGN OUTDD.                          
+       DATA DIVISION.                                                   
+       FILE SECTION.                                                    
+       FD   EMPLOYEE-DATA   RECORDING MODE F                            
+                            LABEL RECORDS ARE OMITTED.                  
+       01   EMPIN.                                                      
+              02 NAMEIN     PIC X(20).                                  
+              02 ADDRESSIN PIC X(20).                                   
+              02 PHONEIN    PIC X(7).                                   
+               02 FILLER     PIC X(33).                                 
+        FD   DATAOUT         RECORDING MODE F                           
+                             LABEL RECORDS ARE OMITTED.                 
+        01   PRINTOUT PIC X(80).                                        
+       WORKING-STORAGE SECTION.                                         
+        01 EOF   PIC XXX VALUE "NO".                                    
+        01 RECORD-OUT.                                                  
+               02 NAMEOUT PIC X(20).                                    
+               02 FILLER   PIC X(5) VALUE SPACE.                        
+               02 ADDRESSOUT PIC X(20).                                 
+               02 FILLER   PIC X(5) VALUE SPACE.                        
+               02 PHONEOUT PIC X(7).                                    
+               02 FILLER   PIC X(23) VALUE SPACE.                       
+        01 HEADER.                                                      
+              02 FILLER PIC X(25) VALUE "STUDENT NAME".                 
+              02 FILLER PIC X(25) VALUE "ADDRESS".                      ß
+              02 FILLER PIC X(30) VALUE "PHONE NUMBER".                 
+              02 FILLER PIC X(30) VALUE "PHONE NUMBER".               
+*                                                                     
+       PROCEDURE DIVISION.                                             
+              OPEN INPUT EMPLOYEE-DATA OUTPUT DATAOUT.                
+              WRITE PRINTOUT FROM HEADER                              
+              PERFORM READ-RECORD.                                    
+              PERFORM UNTIL EOF = "YES"                               
+                   MOVE NAMEIN TO NAMEOUT                             
+                   MOVE ADDRESSIN TO ADDRESSOUT                       
+                   MOVE PHONEIN TO PHONEOUT                           
+                   WRITE PRINTOUT FROM RECORD-OUT                     
+                   PERFORM READ-RECORD                                
+           END-PERFORM.                                               
+           CLOSE EMPLOYEE-DATA, DATAOUT.                              
+           STOP RUN.                                                  
+       READ-RECORD.                                                   
+               READ EMPLOYEE-DATA AT END MOVE "YES" TO EOF            
+               END-READ.                                              
+/*                                                                    
+//GO.INDD  DD  *                                                      
+GEORGE WASHINGTON   12 CHERRY STREET    4318392                      
+THOMAS JEFFERSON    10 PARK AVENUE      8009999                       
+WILLIAM J CLINTON   10 APPLE TREE DRIVE 9994444                       
+/*                                                                    
+//GO.SYSOUT DD SYSOUT=*                                               
+//GO.SYSUDUMP DD SYSOUT=A                                             
+//GO.OUTDD DD SYSOUT=A                                                          
