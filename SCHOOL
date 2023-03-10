@@ -1,1 +1,273 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. PROG8.
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+              SELECT DATAIN       ASSIGN INDD.
+              SELECT DATAOUT     ASSIGN OUTDD.
+              SELECT ERROUT      ASSIGN ERRDD.
+       DATA DIVISION.
+       FILE SECTION.
+        FD   DATAIN          RECORDING MODE F
+                            LABEL RECORDS ARE OMITTED.
+       01   DATA-IN.
+           02 SSN-IN           PIC 9(09).
+           02 NAME-IN          PIC X(20).
+           02 CLASS-IN         PIC 9(01).
+              88 IS-VALID-CLASS VALUE 1 , 2 , 3 , 4.
+           02 SCHOOL-IN        PIC 9(01).
+              88 IS-VALID-SCHOOL VALUE 1 , 2 , 3.
+           02 GPA-IN           PIC 9V99.
+              88 GPA-IS-WITHIN-RANGE VALUE 0 THRU 4.00.
+           02 CREDITS-IN       PIC 9(02).
+           02 ADVISOR-IN       PIC X(10).
+           02 FILLER           PIC X(34) VALUE SPACE.
 
+        FD DATAOUT     RECORDING MODE F
+                      LABEL RECORDS ARE OMITTED.
+        01 PRINTOUT PIC X(80).
+        FD   ERROUT         RECORDING MODE F
+                           LABEL RECORDS ARE OMITTED.
+        01 WRITEOUT PIC X(80).
+       WORKING-STORAGE SECTION.
+        01 ERRMSG  PIC X(80) VALUE "STUDENT DATA IS INVALID OR MISSING".
+        01 EOF PIC XXX VALUE "NO".
+       01 RECORD-OUT.
+           02 NAME-OUT          PIC  X(24).
+           02 CLASS-OUT         PIC  X(14).
+           02 SCHOOL-OUT        PIC  X(18).
+           02 CREDITS-OUT       PIC  X(10).
+           02 GPA-OUT           PIC  X(08).
+       01 ERROR-RECORD-OUT.
+           02 FOUND-ERRORS      PIC  X(08) VALUE "ERRORS:".
+           02 SSN-INVALID-OUT       PIC  X(05).
+           02 NAME-INVALID-OUT      PIC  X(07).
+           02 CLASS-INVALID-OUT     PIC  X(06).
+           02 SCHOOL-INVALID-OUT    PIC  X(07).
+           02 GPA-INVALID-OUT       PIC  X(07).
+           02 ADVISOR-INVALID-OUT   PIC  X(10).
+       01 SSN-SAVE          PIC  X(09).
+       01 NAME-SAVE         PIC  X(20).
+       01 CLASS-SAVE        PIC  X(1).
+       01 SCHOOL-SAVE       PIC  X(1).
+       01 GPA-SAVE          PIC  9.99.
+       01 CREDITS-SAVE      PIC  X(02).
+       01 ADVISOR-SAVE      PIC  X(8).
+       01     SSN-INVALID PIC  X(05)  VALUE SPACES.
+       01    NAME-INVALID PIC  X(10)  VALUE  SPACES.
+       01   CLASS-INVALID PIC  X(09)  VALUE  SPACES.
+       01  SCHOOL-INVALID PIC  X(09)  VALUE  SPACES.
+       01     GPA-INVALID PIC  X(07)  VALUE  SPACES.
+       01 CREDITS-INVALID PIC  X(08)  VALUE  SPACES.
+       01 ADVISOR-INVALID PIC  X(08)  VALUE  SPACES.
+      *    CHANGE XXX-VAL TO SPACES AFTER DEBUGGING
+       01     SSN-VALID PIC  X(07)  VALUE SPACES.
+       01    NAME-VALID PIC  X(08)  VALUE  SPACES.
+       01   CLASS-VALID PIC  X(09)  VALUE  SPACES.
+       01  SCHOOL-VALID PIC  X(09)  VALUE  SPACES.
+       01     GPA-VALID PIC  X(07)  VALUE  SPACES.
+       01 CREDITS-VALID PIC  X(12)  VALUE  SPACES.
+       01 ADVISOR-VALID PIC  X(11)  VALUE  SPACES.
+       01 ERROR-SW PIC  X(01) VALUE "Y".
+       01 HEADER-LINE-ONE.
+           02 FILLER   PIC  X(04)  VALUE "STUDENT".
+           02 FILLER   PIC  X(14)  VALUE "CLASS".
+           02 FILLER   PIC  X(18)  VALUE "SCHOOL".
+           02 FILLER   PIC  X(10)  VALUE "TOTAL".
+           02 FILLER   PIC  X(11)  VALUE "GRADE POINT".
+       01 HEADER-LINE-TWO.
+           02 FILLER   PIC  X(24)  VALUE "NAME".
+           02 FILLER   PIC  X(14)  VALUE "LEVEL".
+           02 FILLER   PIC  X(18)  VALUE "OF".
+           02 FILLER   PIC  X(10)  VALUE "CREDITS".
+           02 FILLER   PIC  X(11)  VALUE "AVERAGE".
+      ****************************************************
+      ** TABLES
+      ****************************************************
+        01 ADVISORS-LIST.
+           05 FILLER PIC X(10) VALUE "SMITH".
+           05 FILLER PIC X(10) VALUE "BROWN".
+           05 FILLER PIC X(10) VALUE "COLLINS".
+           05 FILLER PIC X(10) VALUE "WHITTLE".
+           05 FILLER PIC X(10) VALUE "JONES".
+        01 ADVISOR-TABLE REDEFINES ADVISORS-LIST.
+            05 ADVISORS-TABLE OCCURS 5 TIMES.
+               10  ADVISOR       PIC X(10).
+       01 MAX-ADVISORS PIC 9(03) VALUE 5.
+       01 X PIC 9(03) VALUE 1.
+       01 ADVISOR-WAS-FOUND PIC X(01) VALUE "N".
+       PROCEDURE DIVISION.
+       MAIN-MODULE.
+           OPEN INPUT DATAIN OUTPUT DATAOUT OUTPUT ERROUT.
+           WRITE PRINTOUT FROM HEADER-LINE-ONE
+           WRITE PRINTOUT FROM HEADER-LINE-TWO
+           PERFORM READ-RECORD
+           MOVE "NO" TO EOF
+           PERFORM UNTIL EOF = "YES"
+
+           MOVE "N" TO ADVISOR-WAS-FOUND
+           MOVE "N" TO ERROR-SW
+           PERFORM MOVE-LINE-SAVE-TO-ERROR-REC
+
+            PERFORM VARYING X FROM 1 BY 1 UNTIL X = MAX-ADVISORS
+              IF ADVISOR-SAVE = ADVISOR(X)
+                MOVE "Y" TO ADVISOR-WAS-FOUND
+               DISPLAY  "(" ADVISOR-SAVE  "-" X ")<- ADVISOR TEST"
+              ELSE
+                CONTINUE
+              END-IF
+            END-PERFORM
+
+           IF ADVISOR-WAS-FOUND = "Y"
+           MOVE SPACE TO ADVISOR-SAVE
+           MOVE SPACE TO ADVISOR-INVALID-OUT
+              CONTINUE
+           ELSE
+               MOVE "Y" TO ERROR-SW
+               MOVE "ADVISOR" TO ADVISOR-INVALID-OUT
+           END-IF
+
+           PERFORM MOVE-LINE-IN-TO-LINE-SAVE
+           PERFORM DEBUG-ALL
+
+           IF SSN-IN IS NUMERIC
+                IF (SSN-IN = SPACE) THEN
+                 DISPLAY  "(" SSN-IN ")<-CATCHES SPACE(S)"
+                  MOVE "Y" TO ERROR-SW
+                 MOVE "SSN1" TO SSN-INVALID-OUT
+                ELSE
+                  DISPLAY  "(" SSN-IN ")<-PASSES SSN TEST"
+                END-IF
+           ELSE
+              DISPLAY  "(" SSN-IN ") IF SSN NOT NOT NUMERIC"
+              MOVE "SSN2" TO SSN-INVALID-OUT
+              MOVE "Y" TO ERROR-SW
+           END-IF
+
+           IF (NAME-IN = SPACES)
+               MOVE "NAME1" TO NAME-INVALID-OUT
+               DISPLAY  "(" NAME-IN ") <-CATCHES BLANK NAME-INS"
+               MOVE "Y" TO ERROR-SW
+           ELSE
+               DISPLAY  "(" NAME-IN ")<-PASSES NAME TEST"
+               CONTINUE
+           END-IF
+
+           IF IS-VALID-CLASS
+              DISPLAY  "(" CLASS-IN ")<-PASSES CLASS-IN TEST"
+              CONTINUE
+           ELSE
+              DISPLAY  "(" CLASS-IN ") <-CATCHES INVALID CLASSES"
+              MOVE "CLASS1" TO CLASS-INVALID-OUT
+              MOVE "Y" TO ERROR-SW
+           END-IF
+
+
+           IF IS-VALID-SCHOOL
+              DISPLAY  "(" SCHOOL-IN ")<-PASSES SCHOOL-IN TEST"
+              CONTINUE
+           ELSE
+              MOVE "SCHOOL1" TO SCHOOL-INVALID-OUT
+              DISPLAY  "(" CLASS-IN ") <-CATCHES INVALID SCHOOLS"
+              MOVE "Y" TO ERROR-SW
+           END-IF
+
+           IF GPA-IN IS NUMERIC
+                IF GPA-IS-WITHIN-RANGE
+                 DISPLAY  "(" GPA-IN ")<-PASSES GPA TEST"
+                 CONTINUE
+                ELSE
+                 MOVE "GPA1" TO GPA-INVALID-OUT
+                 DISPLAY  "(" GPA-IN ")<-CATCHES > GPA OUT OF BOUNDS"
+                 MOVE "Y" TO ERROR-SW
+                END-IF
+           ELSE
+                DISPLAY  "(" GPA-IN ")<- CATCHES NON-NUMERIC"
+                MOVE "GPA2" TO GPA-INVALID-OUT
+                MOVE "Y" TO ERROR-SW
+           END-IF
+
+           IF ERROR-SW = "Y"
+      ********************************************
+      * 1 OR MORE ERRORS FOUND *** WRITE TO ERROR FILE
+      ****************************************
+             WRITE WRITEOUT FROM DATA-IN
+             WRITE WRITEOUT FROM ERROR-RECORD-OUT
+           ELSE
+      ********************************************
+      *  ***PASSES ALL TESTS*** WRITE TO REPORT
+      ****************************************
+              PERFORM MOVE-LINE-SAVE-TO-LINE-OUT
+              EVALUATE CLASS-IN
+              WHEN 1 MOVE "Freshman" TO CLASS-OUT
+              WHEN 2 MOVE "Sophomore" TO CLASS-OUT
+              WHEN 3 MOVE "Junior" TO CLASS-OUT
+              WHEN 4 MOVE "Senior" TO CLASS-OUT
+              END-EVALUATE
+              EVALUATE SCHOOL-IN
+              WHEN 1 MOVE "Business" TO SCHOOL-OUT
+              WHEN 2 MOVE "Liberal Arts" TO SCHOOL-OUT
+              WHEN 3 MOVE "Computer Science" TO SCHOOL-OUT
+              END-EVALUATE
+              WRITE PRINTOUT FROM RECORD-OUT
+           END-IF
+
+           PERFORM READ-RECORD
+           END-PERFORM
+           CLOSE DATAIN DATAOUT ERROUT.
+           STOP RUN.
+      ********************************************
+      ****    SUBROUTINES
+      ********************************************
+       READ-RECORD.
+             READ DATAIN AT END MOVE "YES" TO EOF
+             END-READ.
+
+       WRITE-ERROR-TO-ERROR-REC.
+              DISPLAY "WRITE-ERROR-TO-ERROR-REC"
+              DISPLAY "INVALID " SSN-INVALID NAME-INVALID CLASS-INVALID
+              DISPLAY  SCHOOL-INVALID GPA-INVALID CREDITS-INVALID
+              DISPLAY ADVISOR-INVALID.
+       MOVE-LINE-IN-TO-LINE-SAVE.
+                   MOVE     SSN-IN    TO     SSN-SAVE
+                   MOVE    NAME-IN    TO    NAME-SAVE
+                   MOVE   CLASS-IN    TO   CLASS-SAVE
+                   MOVE  SCHOOL-IN    TO  SCHOOL-SAVE
+                   MOVE     GPA-IN    TO     GPA-SAVE
+                   MOVE CREDITS-IN    TO CREDITS-SAVE
+                   MOVE ADVISOR-IN    TO ADVISOR-SAVE.
+       IF-RECORD-PASSES-WITHOUT-ERROS.
+                   DISPLAY "    *    "
+                   DISPLAY "   * *     "
+                   DISPLAY "  *   *    "
+                   DISPLAY " *     *   "
+                   DISPLAY "    *    "
+                   DISPLAY "    *    NO ERRORS DETECTED "
+                   DISPLAY "--------------------------------".
+       IF-1-OR-MORE-ERRORS-DETECTED.
+                   DISPLAY "--------------------------------"
+                   DISPLAY "    *  =>1 ERRORS FOUND "
+                   DISPLAY "--------------------------------".
+       MOVE-LINE-SAVE-TO-LINE-OUT.
+                   MOVE    NAME-SAVE  TO    NAME-OUT
+                   MOVE   CLASS-SAVE  TO   CLASS-OUT
+                   move CREDITS-SAVE to CREDITS-OUT
+                   MOVE  GPA-SAVE  TO  GPA-OUT.
+       MOVE-LINE-SAVE-TO-ERROR-REC.
+                   MOVE     SSN-VALID TO SSN-INVALID-OUT
+                   MOVE    NAME-VALID TO NAME-INVALID-OUT
+                   MOVE   CLASS-VALID TO CLASS-INVALID-OUT
+                   MOVE  SCHOOL-VALID TO SCHOOL-INVALID-OUT
+                   MOVE     GPA-VALID TO GPA-INVALID-OUT
+                   MOVE  ADVISOR-SAVE TO ADVISOR-INVALID-OUT.
+       DEBUG-ALL.
+           DISPLAY "("     SSN-IN ")("     SSN-SAVE ")("     ")"
+           DISPLAY "("    NAME-IN ")("    NAME-SAVE ")(" NAME-OUT   ")"
+           DISPLAY "("   CLASS-IN ")("   CLASS-SAVE ")(" CLASS-OUT  ")"
+           DISPLAY "("  SCHOOL-IN ")("  SCHOOL-SAVE ")(" SCHOOL-OUT ")"
+           DISPLAY "("     GPA-IN ")("     GPA-SAVE ")("     ")"
+           DISPLAY "(" CREDITS-IN ")(" CREDITS-SAVE ")("
+           DISPLAY "(" ADVISOR-IN ")(" ADVISOR-SAVE ")(" .
+      ********************************************
+      ****    END-OF-SUBROUTINES
+      ********************************************
