@@ -1,0 +1,229 @@
+  //KC03F15    JOB (PROG1,HLUSAK),CLASS = A,MSGCLASS = H                  
+//            EXEC IGYWCLG                                              
+//COBOL.SYSIN DD *                                                      
+       IDENTIFICATION DIVISION.                                         
+       PROGRAM-ID. PROGRAM1.                                            
+       ENVIRONMENT DIVISION.                                            
+       INPUT-OUTPUT SECTION.                                            
+       FILE-CONTROL.                                                    
+           SELECT EMPLOYEE-DATA ASSIGN INDD.                            
+           SELECT DATAOUT       ASSIGN OUTDD.                           
+           SELECT ERROUT        ASSIGN ERRDD.                           
+       DATA DIVISION.                                                   
+       FILE SECTION.                                                    
+       FD EMPLOYEE-DATA RECORDING MODE F                                
+           LABEL RECORDS ARE OMITTED.                                   
+       01 EMPIN.                                                        
+           02 NAME-IN    PIC X(20).                                     
+           02 HOURS-IN   PIC 99.                                        
+           02 PAY-IN     PIC 99V99.                                     
+           02 FILLER     PIC X(54).                                     
+       FD DATAOUT RECORDING MODE F                                      
+           LABEL RECORDS ARE OMITTED.                                   
+       01 PRINTOUT PIC X(80).                                           
+       FD   ERROUT         RECORDING MODE F                             
+                           LABEL RECORDS ARE OMITTED.                   
+       01 WRITEOUT PIC X(80).                                           
+       WORKING-STORAGE SECTION.                                         
+       01 EOF PIC XXX VALUE "NO".                                       
+       01 RECORD-OUT.                                                   
+           02 NAME-OUT PIC X(20).                                       
+           02 FILLER PIC X VALUE SPACE.                                 
+           02 HOURS-OUT PIC 99.                                         
+           02 FILLER PIC X(4) VALUE SPACE.                              
+           02 PAY-OUT PIC 99.99.                                        
+           02 FILLER PIC X(2) VALUE SPACE.                              
+           02 GROSS-PAY-OUT PIC ZZZ9.99.                                
+                      02 FILLER PIC X(2) VALUE SPACE.                           
+           02 FED-TAX-OUT PIC ZZZ9.99.                                  
+           02 FILLER PIC X(2) VALUE SPACE.                              
+           02 STATE-TAX-OUT PIC ZZ9.99.                                 
+           02 FILLER PIC X(2) VALUE SPACE.                              
+           02 SOC-SEC-OUT PIC ZZ9.99.                                   
+           02 FILLER PIC X(2) VALUE SPACE.                              
+           02 NET-PAY-OUT PIC ZZZ9.99.                                  
+      ****************************************                          
+      **** HEADERS                                                      
+      ****************************************                          
+       01 HEADER1.                                                      
+           02 FILLER PIC X(20) VALUE "EMPLOYEE".                        
+           02 FILLER PIC X(08) VALUE "HOURS".                           
+           02 FILLER PIC X(07) VALUE "PAY".                             
+           02 FILLER PIC X(09) VALUE "GROSS".                           
+           02 FILLER PIC X(09) VALUE "FEDERAL".                         
+           02 FILLER PIC X(07) VALUE "STATE".                           
+           02 FILLER PIC X(10) VALUE "SOCIAL".                          
+           02 FILLER PIC X(05) VALUE "NET".                             
+       01 HEADER2.                                                      
+           02 FILLER PIC X(20) VALUE "NAME".                            
+           02 FILLER PIC X(8) VALUE "WORKED".                           
+           02 FILLER PIC X(7) VALUE "RATE".                             
+           02 FILLER PIC X(9) VALUE "PAY".                              
+           02 FILLER PIC X(9) VALUE "TAXES".                            
+           02 FILLER PIC X(7) VALUE "TAXES".                            
+           02 FILLER PIC X(10) VALUE "SECURITY".                        
+           02 FILLER PIC X(5) VALUE "PAY".                              
+       01 HEADER3.                                                      
+           02 FILLER PIC X(80) VALUE SPACE.                             
+      ****************************************                          
+      **** FOR ERROUT FILE                                              
+      ***********************************                               
+       01 ERROR-RECORD-OUT.                                             
+           02 FOUND-ERRORS       PIC X(10) VALUE "ERRORS: ".            
+                      02 NAME-INVALID-OUT   PIC X(20) VALUE "NAME IS INVALID".  
+           02 HOURS-INVALID-OUT  PIC X(20) VALUE "HOURS ARE INVALID".   
+           02 PAY-INVALID-OUT    PIC X(20) VALUE "PAY RATE IS INVALID". 
+       01 FLAG-NAME-INVALID      PIC X(01) VALUE "N".                   
+       01 FLAG-HOURS-INVALID     PIC X(01) VALUE "N".                   
+       01 FLAG-PAY-INVALID       PIC X(01) VALUE "N".                   
+       01 RECORD-IN-IS-VALID     PIC X(01) VALUE "Y".                   
+      ****************************************                          
+      **** SAVE VARS                                                    
+      ***********************************                               
+       01 GROSS-PAY-SAVE PIC 9999V99.                                   
+       01 SOC-SEC-SAVE   PIC 999V99.                                    
+       01 FED-TAX-SAVE   PIC 9999V99.                                   
+       01 STATE-TAX-SAVE PIC 999V99.                                    
+       01 NET-PAY-SAVE   PIC 9999V99.                                   
+                                                                        
+       PROCEDURE DIVISION.                                              
+           PERFORM OPEN-INPUTS                                          
+            PERFORM WRITE-HEADERS                                       
+             PERFORM READ-RECORD                                        
+              PERFORM UNTIL EOF = "YES"                                 
+               PERFORM RESET-VALIDATION-FLAGS                           
+                PERFORM VALIDATE-INPUT-FIELDS-ROUTINE                                                               
+                 IF RECORD-IN-IS-VALID = "Y"                            
+                      CALL "PROGRAM2" USING EMPIN, GROSS-PAY-SAVE,      
+                      SOC-SEC-SAVE, FED-TAX-SAVE, STATE-TAX-SAVE,       
+                      NET-PAY-SAVE                                      
+                      PERFORM SAVED-VALS-TO-WRITE-OUT                   
+                      WRITE PRINTOUT FROM RECORD-OUT                    
+                      PERFORM PRINT-DEBUG                               
+                 ELSE                                                   
+                      PERFORM WRITE-VALIDATION-ERROUT                   
+                      PERFORM MESSAGE-TO-DISPLAY                        
+                 END-IF  
+       PERFORM READ-RECORD                                    
+             END-PERFORM                                               
+           CLOSE EMPLOYEE-DATA, DATAOUT                                 
+           STOP RUN.                                                    
+       WRITE-VALIDATION-ERROUT.                                         
+          WRITE WRITEOUT FROM EMPIN                                    
+          WRITE WRITEOUT FROM ERROR-RECORD-OUT                         
+          .                                                            
+       RESET-VALIDATION-FLAGS.                                         
+           MOVE 'N' TO FLAG-NAME-INVALID                               
+           MOVE 'N' TO FLAG-HOURS-INVALID                              
+           MOVE 'N' TO FLAG-PAY-INVALID                                
+           MOVE "Y" TO RECORD-IN-IS-VALID                              
+           DISPLAY "FLAGS HAVE BEEN RESET ".                           
+       VALIDATE-INPUT-FIELDS-ROUTINE.                                  
+           PERFORM IS-NAME-IN-VALID                                    
+           PERFORM IS-HOURS-IN-VALID                                   
+           PERFORM IS-PAY-RATE-IN-VALID.                               
+       IS-NAME-IN-VALID.                                               
+           IF NAME-IN = SPACE                                          
+             MOVE "NAME IS INVALID" TO NAME-INVALID-OUT                
+             MOVE "Y" TO FLAG-NAME-INVALID                             
+             MOVE "N" TO RECORD-IN-IS-VALID                            
+           ELSE                                                        
+               MOVE SPACE TO NAME-INVALID-OUT                          
+           END-IF                                                      
+           .                                                           
+       IS-HOURS-IN-VALID.                                              
+           IF HOURS-IN IS NUMERIC                                      
+               MOVE SPACE TO HOURS-INVALID-OUT                         
+           ELSE                                                        
+               MOVE "HOURS ARE INVALID" TO HOURS-INVALID-OUT           
+               MOVE "Y" TO FLAG-HOURS-INVALID                          
+               MOVE "N" TO RECORD-IN-IS-VALID                          
+           END-IF      
+                   .                                                           
+       IS-PAY-RATE-IN-VALID.                                            
+           IF PAY-IN IS NUMERIC                                         
+               MOVE SPACE TO PAY-INVALID-OUT                            
+           ELSE                                                         
+              MOVE "PAY RATE IS INVALID" TO PAY-INVALID-OUT             
+              MOVE "Y" TO FLAG-PAY-INVALID                              
+              MOVE "N" TO RECORD-IN-IS-VALID                            
+           END-IF                                                       
+           .                                                            
+       WRITE-HEADERS.                                                   
+           WRITE PRINTOUT FROM HEADER1                                  
+           WRITE PRINTOUT FROM HEADER2                                  
+           WRITE PRINTOUT FROM HEADER3.                                 
+       OPEN-INPUTS.                                                     
+           OPEN INPUT EMPLOYEE-DATA                                     
+           OPEN OUTPUT DATAOUT                                          
+           OPEN OUTPUT ERROUT.                                          
+       CLOSE-INPUTS.                                                    
+           CLOSE EMPLOYEE-DATA                                          
+           CLOSE DATAOUT                                                
+           CLOSE ERROUT.                                                
+       SAVED-VALS-TO-WRITE-OUT.                                         
+           MOVE HOURS-IN TO HOURS-OUT                                   
+           MOVE NAME-IN TO NAME-OUT                                     
+           MOVE PAY-IN TO PAY-OUT                                       
+           MOVE GROSS-PAY-SAVE TO GROSS-PAY-OUT                         
+           MOVE SOC-SEC-SAVE TO SOC-SEC-OUT                             
+           MOVE FED-TAX-SAVE TO FED-TAX-OUT                                     
+                  MOVE STATE-TAX-SAVE TO STATE-TAX-OUT                         
+           MOVE NET-PAY-SAVE TO NET-PAY-OUT.                            
+       READ-RECORD.                                                     
+           READ EMPLOYEE-DATA AT END MOVE "YES" TO EOF                  
+           END-READ.                                                    
+       PRINT-DEBUG.                                                     
+           DISPLAY "   "                                                
+           DISPLAY "NAME-IN(" NAME-IN ")"                               
+           DISPLAY "HOURS-IN * PAY-IN = GROSS"                          
+           DISPLAY "     " HOURS-IN "  *  " PAY-IN  " = " GROSS-PAY-SAVE
+           DISPLAY SOC-SEC-SAVE "=" GROSS-PAY-SAVE " * .07"             
+           DISPLAY FED-TAX-SAVE "=" GROSS-PAY-SAVE " * .20"             
+           DISPLAY STATE-TAX-SAVE "=" GROSS-PAY-SAVE " * .10"           
+           DISPLAY NET-PAY-SAVE " = " GROSS-PAY-SAVE " - " SOC-SEC-SAVE 
+           " - " FED-TAX-SAVE " - " STATE-TAX-SAVE                      
+           DISPLAY "   "                                                
+           .                                                            
+       MESSAGE-TO-DISPLAY.                                              
+           DISPLAY "ERRORS DETECTED, SEE ERROR FILE. RECORD-IN->(" EMPIN
+           .                                                            
+       END PROGRAM PROGRAM1.                                            
+      ********************************                                  
+      ****      PROGRAM 2         ****                                  
+      ********************************                                  
+      ****      PROGRAM 2         ****                                  
+      ********************************                                  
+       IDENTIFICATION DIVISION.                                         
+       PROGRAM-ID. PROGRAM2.                                            
+       ENVIRONMENT DIVISION.                                            
+       DATA DIVISION.                                                   
+       LINKAGE SECTION.                                                 
+       01 PASSDATA.                                                     
+           05 NAME-IN PIC X(20).                                        
+           05 HOURS-IN PIC 99.                                          
+           05 PAY-IN PIC 99V99.                                         
+       01 GROSS-PAY-SAVE PIC 9999V99.                                           
+          01 SOC-SEC-SAVE   PIC 999V99.                                    
+       01 FED-TAX-SAVE   PIC 9999V99.                                   
+       01 STATE-TAX-SAVE PIC 999V99.                                    
+       01 NET-PAY-SAVE   PIC 9999V99.                                   
+       PROCEDURE DIVISION USING PASSDATA, GROSS-PAY-SAVE, SOC-SEC-SAVE, 
+                FED-TAX-SAVE, STATE-TAX-SAVE, NET-PAY-SAVE.             
+            PERFORM COMPUTE-GROSS-PAY                                   
+            PERFORM COMPUTE-SOC-SEC                                     
+            PERFORM COMPUTE-FED-TAX                                     
+            PERFORM COMPUTE-STATE-TAX                                   
+            PERFORM COMPUTE-NET-PAY                                     
+           EXIT PROGRAM.                                                
+       COMPUTE-GROSS-PAY.                                               
+           COMPUTE GROSS-PAY-SAVE = HOURS-IN * PAY-IN.                  
+       COMPUTE-SOC-SEC.                                                 
+           COMPUTE SOC-SEC-SAVE = GROSS-PAY-SAVE * .07.                 
+       COMPUTE-FED-TAX.                                                 
+           COMPUTE FED-TAX-SAVE = GROSS-PAY-SAVE * .20.                 
+       COMPUTE-STATE-TAX.                                               
+           COMPUTE STATE-TAX-SAVE = GROSS-PAY-SAVE * .10.               
+       COMPUTE-NET-PAY.                                                 
+           COMPUTE NET-PAY-SAVE = GROSS-PAY-SAVE  -                     
+               SOC-SEC-SAVE - FED-TAX-SAVE - STATE-TAX-SAVE.                    
